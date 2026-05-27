@@ -7,7 +7,7 @@ import random
 from tkinter import Tk, filedialog
 from cnn_model import LetterCNN
 
-# ── Colors (same doodle palette) ──────────────────────────
+# ── Colors ────────────────────────────────────────────────
 BG            = (253, 246, 227)
 CANVAS_COL    = (255, 255, 255)
 CHARCOAL      = (45,  45,  45)
@@ -44,10 +44,12 @@ def preprocess_drawn(surface):
     x, y, w, h = cv2.boundingRect(coords)
     if w < 5 or h < 5:
         return None
-    cropped  = gray[y:y+h, x:x+w]
-    resized  = cv2.resize(cropped, (28, 28), interpolation=cv2.INTER_AREA)
-    tensor   = torch.tensor(resized / 255.0, dtype=torch.float32)
-    tensor   = tensor.unsqueeze(0).unsqueeze(0)  # shape (1, 1, 28, 28)
+    cropped = gray[y:y+h, x:x+w]
+    resized = cv2.resize(cropped, (28, 28), interpolation=cv2.INTER_AREA)
+    resized = cv2.flip(resized, 0)
+    resized = cv2.rotate(resized, cv2.ROTATE_90_COUNTERCLOCKWISE)
+    tensor  = torch.tensor(resized / 255.0, dtype=torch.float32)
+    tensor  = tensor.unsqueeze(0).unsqueeze(0)
     return tensor
 
 def preprocess_image(path):
@@ -59,19 +61,21 @@ def preprocess_image(path):
     if coords is None:
         return None
     x, y, w, h = cv2.boundingRect(coords)
-    cropped  = thresh[y:y+h, x:x+w]
-    resized  = cv2.resize(cropped, (28, 28), interpolation=cv2.INTER_AREA)
-    tensor   = torch.tensor(resized / 255.0, dtype=torch.float32)
-    tensor   = tensor.unsqueeze(0).unsqueeze(0)
+    cropped = thresh[y:y+h, x:x+w]
+    resized = cv2.resize(cropped, (28, 28), interpolation=cv2.INTER_AREA)
+    resized = cv2.flip(resized, 0)
+    resized = cv2.rotate(resized, cv2.ROTATE_90_COUNTERCLOCKWISE)
+    tensor  = torch.tensor(resized / 255.0, dtype=torch.float32)
+    tensor  = tensor.unsqueeze(0).unsqueeze(0)
     return tensor
 
 def predict(tensor, model):
     with torch.no_grad():
-        outputs     = model(tensor)
-        probs       = torch.softmax(outputs, dim=1)
-        pred        = torch.argmax(probs, dim=1).item()
-        confidence  = probs[0][pred].item() * 100
-        letter      = chr(pred + ord('a')).upper()
+        outputs    = model(tensor)
+        probs      = torch.softmax(outputs, dim=1)
+        pred       = torch.argmax(probs, dim=1).item()
+        confidence = probs[0][pred].item() * 100
+        letter     = chr(pred + ord('a')).upper()
     return letter, confidence
 
 # ── Drawing helpers ───────────────────────────────────────
@@ -126,10 +130,10 @@ def main():
     model = load_model()
     pygame.init()
 
-    WIDTH, HEIGHT = 620, 560
-    CANVAS_SIZE   = 380
+    WIDTH, HEIGHT = 620, 650
+    CANVAS_SIZE   = 360
     CANVAS_X      = 120
-    CANVAS_Y      = 90
+    CANVAS_Y      = 80
 
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption("Handwriting Reader — CNN")
@@ -137,24 +141,23 @@ def main():
 
     # Fonts
     try:
-        font_title   = pygame.font.Font("Caveat-Bold.ttf", 38)
+        font_title   = pygame.font.Font("Caveat-Bold.ttf", 36)
         font_btn     = pygame.font.Font("Caveat-Bold.ttf", 26)
         font_hint    = pygame.font.Font("Caveat-Regular.ttf", 20)
-        font_predict = pygame.font.Font("Caveat-Bold.ttf", 120)
+        font_predict = pygame.font.Font("Caveat-Bold.ttf", 100)
         font_conf    = pygame.font.Font("Caveat-Regular.ttf", 24)
         font_label   = pygame.font.Font("Caveat-Regular.ttf", 20)
     except:
-        font_title   = pygame.font.SysFont('Arial', 34, bold=True)
+        font_title   = pygame.font.SysFont('Arial', 32, bold=True)
         font_btn     = pygame.font.SysFont('Arial', 22, bold=True)
         font_hint    = pygame.font.SysFont('Arial', 18)
-        font_predict = pygame.font.SysFont('Arial', 110, bold=True)
+        font_predict = pygame.font.SysFont('Arial', 100, bold=True)
         font_conf    = pygame.font.SysFont('Arial', 22)
         font_label   = pygame.font.SysFont('Arial', 18)
 
     canvas = pygame.Surface((CANVAS_SIZE, CANVAS_SIZE))
     canvas.fill((0, 0, 0))
 
-    # Generate wobbly border once
     canvas_border_pts = gen_sketchy_pts(
         CANVAS_X - 3, CANVAS_Y - 3,
         CANVAS_SIZE + 6, CANVAS_SIZE + 6, wobble=3
@@ -164,9 +167,9 @@ def main():
         CANVAS_SIZE + 6, CANVAS_SIZE + 6, wobble=2
     )
 
-    btn_clear   = (100, 490, 120, 42)
-    btn_predict = (250, 490, 120, 42)
-    btn_upload  = (400, 490, 120, 42)
+    btn_clear   = (100, 468, 120, 42)
+    btn_predict = (250, 468, 120, 42)
+    btn_upload  = (400, 468, 120, 42)
 
     drawing           = False
     last_pos          = None
@@ -179,12 +182,11 @@ def main():
         screen.fill(BG)
         draw_notebook_lines(screen, 0, 0, WIDTH, HEIGHT)
 
-        # Title — shows CNN so viewers know which app is running
+        # Title
         title_surf = font_title.render("✏  Handwriting Reader — CNN  ✏", True, CHARCOAL)
-        screen.blit(title_surf, (WIDTH // 2 - title_surf.get_width() // 2, 22))
+        screen.blit(title_surf, (WIDTH // 2 - title_surf.get_width() // 2, 20))
 
-        # Canvas
-        draw_sketchy_rect(screen, SHADOW_CANVAS, canvas_shadow_pts, width=0)
+        # Canvas shadow
         pygame.draw.polygon(screen, SHADOW_CANVAS, canvas_shadow_pts)
         canvas_bg = pygame.Surface((CANVAS_SIZE, CANVAS_SIZE))
         canvas_bg.fill(CANVAS_COL)
@@ -193,8 +195,9 @@ def main():
         screen.blit(canvas, (CANVAS_X, CANVAS_Y))
         draw_sketchy_rect(screen, CHARCOAL, canvas_border_pts, width=3)
 
+        # Hint
         hint = font_hint.render("draw a letter above  ↑", True, MUTED)
-        screen.blit(hint, (WIDTH // 2 - hint.get_width() // 2, CANVAS_Y + CANVAS_SIZE + 12))
+        screen.blit(hint, (WIDTH // 2 - hint.get_width() // 2, CANVAS_Y + CANVAS_SIZE + 8))
 
         # Buttons
         mx, my = pygame.mouse.get_pos()
@@ -205,20 +208,26 @@ def main():
         draw_doodle_button(screen, "Upload",   btn_upload,  YELLOW, font_btn,
                            hover=pygame.Rect(*btn_upload).collidepoint(mx, my))
 
-        # Prediction
+        # Prediction display — below buttons
         if prediction_letter:
-            label = font_label.render("Prediction:", True, MUTED)
-            screen.blit(label, (30, 390))
+            pred_y = 525
+
+            label_surf = font_label.render("Prediction:", True, MUTED)
+            screen.blit(label_surf, (40, pred_y))
+
             letter_surf = font_predict.render(prediction_letter, True, NAVY)
-            screen.blit(letter_surf, (30, 390))
+            screen.blit(letter_surf, (40, pred_y + 20))
+
             draw_squiggle(screen, BLUE,
-                          30, 400 + letter_surf.get_height() - 20,
+                          40, pred_y + 20 + letter_surf.get_height() - 8,
                           letter_surf.get_width())
-            conf_text = font_conf.render(f"{prediction_conf:.1f}% confidence", True, CHARCOAL)
-            screen.blit(conf_text, (30, 400 + letter_surf.get_height() - 10))
+
+            conf_surf = font_conf.render(f"{prediction_conf:.1f}% confidence", True, CHARCOAL)
+            screen.blit(conf_surf, (40 + letter_surf.get_width() + 16, pred_y + 40))
+
             if prediction_conf > 90:
-                star = font_hint.render("⭐ confident!", True, YELLOW)
-                screen.blit(star, (30, 430 + letter_surf.get_height() - 10))
+                star_surf = font_hint.render("⭐ confident!", True, YELLOW)
+                screen.blit(star_surf, (40 + letter_surf.get_width() + 16, pred_y + 70))
 
         # Cursor
         if (CANVAS_X <= mx <= CANVAS_X + CANVAS_SIZE and
@@ -273,7 +282,8 @@ def main():
                     cx, cy = ex - CANVAS_X, ey - CANVAS_Y
                     if 0 <= cx <= CANVAS_SIZE and 0 <= cy <= CANVAS_SIZE:
                         if last_pos:
-                            pygame.draw.line(canvas, (255, 255, 255), last_pos, (cx, cy), 18)
+                            pygame.draw.line(canvas, (255, 255, 255),
+                                             last_pos, (cx, cy), 18)
                         last_pos = (cx, cy)
                     else:
                         last_pos = None

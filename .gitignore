@@ -1,0 +1,11 @@
+# EMNIST dataset files
+data/
+
+# Large binary files
+*.gz
+*.zip
+gzip/
+
+# Numpy weight files (optional — remove these lines if you WANT to save weights to GitHub)
+*.npy
+*.pth
