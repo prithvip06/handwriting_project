@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Handwriting Reader</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="app">
+    <h1>✏️ Handwriting Reader</h1>
+
+    <div class="board">
+      <div class="toolbar">
+        <div class="colors">
+          <div class="color selected" data-color="#000000" style="background:#000000"></div>
+          <div class="color" data-color="#ff2d55" style="background:#ff2d55"></div>
+          <div class="color" data-color="#4a90d9" style="background:#4a90d9"></div>
+          <div class="color" data-color="#34a853" style="background:#34a853"></div>
+          <div class="color" data-color="#f5a623" style="background:#f5a623"></div>
+          <div class="color" data-color="#ab66eb" style="background:#ab66eb"></div>
+        </div>
+
+        <div class="sizes">
+          <label for="brush-size">Brush size</label>
+          <input type="range" id="brush-size" min="4" max="40" value="18">
+        </div>
+
+        <div class="actions">
+          <button id="clear-btn" class="btn btn-secondary">Clear</button>
+          <button id="predict-btn" class="btn btn-primary">Predict!</button>
+        </div>
+      </div>
+
+      <canvas id="drawing-canvas" width="400" height="400"></canvas>
+    </div>
+
+    <div id="result" class="result"></div>
+  </div>
+
+  <script src="{{ url_for('static', filename='draw.js') }}"></script>
+</body>
+</html>

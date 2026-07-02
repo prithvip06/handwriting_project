@@ -7,6 +7,8 @@ def load_data():
     X_test_raw  = idx2numpy.convert_from_file(r'C:\Users\prith\Downloads\gzip\gzip\emnist-letters-test-images-idx3-ubyte\emnist-letters-test-images-idx3-ubyte')
     Y_test_raw  = idx2numpy.convert_from_file(r'C:\Users\prith\Downloads\gzip\gzip\emnist-letters-test-labels-idx1-ubyte\emnist-letters-test-labels-idx1-ubyte')
 
+    X_train_raw = X_train_raw.transpose(0, 2, 1)
+
     X_flat = X_train_raw.reshape(X_train_raw.shape[0], 784)
     data = np.column_stack([Y_train_raw, X_flat])
     data = np.array(data)
